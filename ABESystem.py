@@ -116,7 +116,7 @@ class ABESystem:
             raise ValueError("Klucz użytkownika nie został zaimportowany.")
 
         session_key = self.cpabe.decrypt(self.public_key, key_obj, abe_ciphertext) 
-        if session_key is None:
+        if session_key is None or session_key == False:
             raise ValueError("Brak dostępu: nie można odszyfrować klucza sesji.")
 
         session_key_bytes = self.group.serialize(session_key)
