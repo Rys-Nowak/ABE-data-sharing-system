@@ -1,3 +1,10 @@
+## How to run
+
+```
+docker build -t charm-crypto .
+docker run -it --rm -v $(pwd)/output:/app/output charm-crypto
+```
+
 # System udostępniania danych z kontrolą dostępu opartą na kryptografii atrybutowej (ABE)
 
 ## Opis 
