@@ -17,7 +17,40 @@ class ABESystem:
         self.cpabe = CPabe_BSW07(self.group)
         self.db = DatabaseManager()
         self.public_key, self.master_key = self.cpabe.setup()
+        # self.setup()
         self.ensure_admin_exists()
+
+    # def setup(self):
+    #     if not os.path.exists("public_key.pkl") or not os.path.exists("master_key.pkl"):
+    #         print("[INFO] Generowanie kluczy publicznego i głównego...")
+    #         self.generate_keys()
+    #         print("[✓] Klucze zostały wygenerowane.")
+    #     else:
+    #         print("[INFO] Klucze publiczny i główny już istnieją, wczytywanie...")
+    #         with open("public_key.pkl", "rb") as f:
+    #             serialized_pk = pickle.load(f)
+    #         with open("master_key.pkl", "rb") as f:
+    #             serialized_mk = pickle.load(f)
+    #         self.public_key = bytesToObject(serialized_pk, self.group)
+    #         self.master_key = bytesToObject(serialized_mk, self.group)
+    #         print("[✓] Klucze zostały wczytane.")
+
+    # def generate_keys(self):
+    #     print("[INFO] Generowanie kluczy publicznego i głównego...")
+    #     if os.path.exists("public_key.pkl") or os.path.exists("master_key.pkl"):
+    #         print("[WARNING] Istnieją już klucze, nadpisywanie...")
+    #         os.remove("public_key.pkl")
+    #         os.remove("master_key.pkl")
+    #     # Generowanie kluczy publicznego i głównego
+    #     print("[INFO] Generowanie kluczy publicznego i głównego...")
+    #     self.public_key, self.master_key = self.cpabe.setup()
+    #     serialized_pk = objectToBytes(self.public_key, self.group)
+    #     serialized_mk = objectToBytes(self.master_key, self.group)
+    #     with open("public_key.pkl", "wb") as f:
+    #         pickle.dump(serialized_pk, f)
+    #     with open("master_key.pkl", "wb") as f:
+    #         pickle.dump(serialized_mk, f)
+    #     print("[✓] Klucze publiczny i główny zostały wygenerowane i zapisane.")
 
     def ensure_admin_exists(self):
         if not self.db.user_exists("admin"):
@@ -75,10 +108,12 @@ class ABESystem:
         session_key = self.group.random(GT)
 
         abe_ciphertext = self.cpabe.encrypt(self.public_key, session_key, policy)
+
         session_key_bytes = self.group.serialize(session_key)
         aes_key = sha256(session_key_bytes).digest()
 
         cipher = AES.new(aes_key, AES.MODE_CBC)
+
         ct_bytes = cipher.encrypt(pad(file_bytes, AES.block_size))
         iv = cipher.iv
 
@@ -96,29 +131,48 @@ class ABESystem:
             raise ValueError(f"Nie znaleziono danych o etykiecie: {label}")
         
         data = pickle.loads(ciphertext_bytes)
-        abe_bytes = data["abe"]
-        aes_ct = data["aes"]
-        iv = data["iv"]
 
-        abe_ciphertext = bytesToObject(abe_bytes, self.group)
-        if user["role"] == "admin":
-            session_key = self.cpabe.decrypt(self.public_key, self.master_key, abe_ciphertext)
-        else:
-            if not key_obj:
-                raise ValueError("Klucz użytkownika nie został zaimportowany.")
+        try: 
+            abe_ciphertext = bytesToObject(data["abe"], self.group)
+        except Exception as e:
+            raise ValueError(f"Błąd podczas deserializacji danych: {e}")
+        
+        try:
+            if user["role"] == "admin":
+                session_key = self.cpabe.decrypt(self.public_key, self.master_key, abe_ciphertext)
+            else:
+                if not key_obj:
+                    raise ValueError("Klucz użytkownika nie został zaimportowany.")
+                session_key = self.cpabe.decrypt(self.public_key, key_obj, abe_ciphertext)
+            if session_key is False or session_key is None:
+                raise ValueError("Brak dostępu: nie można odszyfrować klucza sesji.")
+        except Exception as e:
+            raise ValueError(f"Błąd podczas odszyfrowywania klucza sesji: {e}")
+        
+        # if user["role"] == "admin":
+            # print("Group object at decrypt:", id(self.group))
+            # session_key = self.cpabe.decrypt(self.public_key, self.master_key, abe_ciphertext)
+        # else:
+            # if not key_obj:
+                # raise ValueError("Klucz użytkownika nie został zaimportowany.")
             #TODO: This returns false, ValueError is caught later
             # that's why the whole decryption fails, i'm not sure why
-            session_key = self.cpabe.decrypt(self.public_key, key_obj, abe_ciphertext) 
-        if session_key is None:
-            raise ValueError("Brak dostępu: nie można odszyfrować klucza sesji.")
+            # print("Group object at decrypt:", id(self.group))
+            # session_key = self.cpabe.decrypt(self.public_key, key_obj, abe_ciphertext) 
+        # if session_key is None:
+        #     raise ValueError("Brak dostępu: nie można odszyfrować klucza sesji.")
 
         # 4. Derive AES key from session key
         session_key_bytes = self.group.serialize(session_key)
         aes_key = sha256(session_key_bytes).digest()
 
         # 5. Decrypt the file bytes using AES
-        cipher = AES.new(aes_key, AES.MODE_CBC, iv)
-        file_bytes = unpad(cipher.decrypt(aes_ct), AES.block_size)
+        # cipher = AES.new(aes_key, AES.MODE_CBC, iv)
+        cipher = AES.new(aes_key, AES.MODE_CBC, data["iv"])
+        try:
+            file_bytes = unpad(cipher.decrypt(data["aes"]), AES.block_size)
+        except ValueError as e:
+            raise ValueError(f"Nieprawidłowy AES: nie można odszyfrować danych. {e}")
         return file_bytes
         # ciphertext = (
         #     bytesToObject(ciphertext_bytes, self.group) if ciphertext_bytes else None
