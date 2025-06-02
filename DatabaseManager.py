@@ -45,6 +45,15 @@ class DatabaseManager:
         )
         self.conn.commit()
 
+    def delete_user(self, username):
+        cursor = self.conn.cursor()
+        cursor.execute("DELETE FROM users WHERE name = ?", (username,))
+        self.conn.commit()
+
+        filepath = os.path.join("private_keys", f"{username}_priv.key")
+        if os.path.exists(filepath):
+            os.remove(filepath)
+
     def get_user(self, name):
         cursor = self.conn.cursor()
         cursor.execute(
@@ -86,6 +95,11 @@ class DatabaseManager:
             "INSERT OR REPLACE INTO ciphertexts (label, policy, blob) VALUES (?, ?, ?)",
             (label, policy, ciphertext_bytes),
         )
+        self.conn.commit()
+
+    def delete_ciphertext(self, label):
+        cursor = self.conn.cursor()
+        cursor.execute("DELETE FROM ciphertexts WHERE label = ?", (label,))
         self.conn.commit()
 
     def get_ciphertext(self, label):
