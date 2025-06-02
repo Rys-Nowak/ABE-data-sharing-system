@@ -1,0 +1,7 @@
+ - Trzeba naprawić dodawania pliku. Nie działa szyfrowania a dokumentacja niewiele pomaga
+ - lepsza walidacja inputu (szczególnie username i hasło)
+ - można dodać do bazy danych tabelę attributes (na razie jest w users)
+ - readme
+ - dodawanie atrybutów istniejącemu użytkownikowi
+ - testy
+ - zrobiłem tak że prywatny klucz użytkownika jest generowany przy zakładaniu konta. Potem użytkownik musi go podać przy logowaniu. Chodzi o to żeby go nie zapisywać w bazie tak po prostu. Jak ktoś ma lepszy pomysł to można zmienić
