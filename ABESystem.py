@@ -18,8 +18,20 @@ class ABESystem:
         self.group = PairingGroup("SS512")
         self.cpabe = CPabe_BSW07(self.group)
         self.db = DatabaseManager()
-        self.public_key, self.master_key = self.cpabe.setup()
+        self.public_key = None
+        self.master_key = None
+        self.setup_system_keys()
         self.ensure_admin_exists()
+
+    def setup_system_keys(self):
+        self.public_key = self.db.load_system_public_key()
+        self.load_master_key()
+        if self.public_key is None or self.master_key is None:
+            print("[INFO] Generowanie kluczy systemowych")
+            self.public_key, self.master_key = self.cpabe.setup()
+            self.db.save_system_public_key(self.public_key)
+            self.save_master_key_to_file()
+
 
     def ensure_admin_exists(self):
         if not self.db.user_exists("admin"):
@@ -31,6 +43,26 @@ class ABESystem:
             self.export_key_to_file(
                 self.generate_user_key(ALL_ATTRIBUTES), "output/admin.key"
             )
+
+    def save_master_key_to_file(self):
+        if not self.master_key:
+            raise ValueError("Klucz główny nie został wygenerowany.")
+        serialized = objectToBytes(self.master_key, self.group)
+        with open("master_key.key", "wb") as f:
+            pickle.dump(serialized, f)
+        print("[✓] Klucz główny zapisany do pliku master_key.key")
+
+    def load_master_key(self):
+        if not os.path.exists("master_key.key"):
+            print("[INFO] Plik master_key.key nie istnieje, generowanie nowego klucza głównego.")
+            return None
+        
+        with open("master_key.key", "rb") as f:
+            serialized = pickle.load(f)
+        self.master_key = bytesToObject(serialized, self.group)
+        if not self.master_key:
+            raise ValueError("Nie udało się załadować klucza głównego.")
+        print("[✓] Klucz główny załadowany z pliku master_key.key")
 
     def export_key_to_file(self, key_obj, filepath):
         serialized = objectToBytes(key_obj, self.group)

@@ -34,6 +34,13 @@ class DatabaseManager:
                 blob BLOB
             )"""
         )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS system_keys (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                public_key BLOB
+            ) """
+        )
         self.conn.commit()
 
     def save_user(self, name, password_hash, role, attributes):
@@ -116,3 +123,19 @@ class DatabaseManager:
         cursor = self.conn.cursor()
         cursor.execute("SELECT label, policy FROM ciphertexts")
         return cursor.fetchall()
+    
+    def save_system_public_key(self, public_key):
+        cursor = self.conn.cursor()
+        cursor.execute("INSERT OR REPLACE INTO system_keys (id, public_key) VALUES (1, ?)", 
+                       (objectToBytes(public_key, self.group),))
+        self.conn.commit()
+        print("[✓] Nowy klucz publiczny systemu zapisany w bazie danych.")
+    
+    def load_system_public_key(self):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT public_key FROM system_keys  WHERE id = 1")
+        row = cursor.fetchone()
+        if row:
+            print("[✓] Klucz publiczny systemu wczytany z bazy danych.")
+            return bytesToObject(row[0], self.group)
+        return None
