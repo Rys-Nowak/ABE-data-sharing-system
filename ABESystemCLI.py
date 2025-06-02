@@ -31,7 +31,7 @@ class ABESystemCLI:
             return
 
         attr_str = input("Atrybuty (np. HR,manager): ")
-        attributes = [a.strip() for a in attr_str.split(",") if a.strip()]
+        attributes = [a.strip().upper() for a in attr_str.split(",") if a.strip()]
         user_key = self.system.create_user(name, password, role, attributes)
         print("[✓] Użytkownik zarejestrowany.")
         if user_key:
@@ -237,7 +237,7 @@ class ABESystemCLI:
             print("1. Dodaj plik (zaszyfruj)")
             print("2. Odszyfruj plik")
             print("3. Eksportuj swój klucz")
-            print("4. Lista użytkowników")
+            print("4. Lista zaszyfrowanych plików")
             print("0. Wyloguj")
             choice = input("> ")
             try:
@@ -256,10 +256,10 @@ class ABESystemCLI:
                 elif choice == "3":
                     self.export_user_key_interactive()
                 elif choice == "4":
-                    users = self.system.list_users()
-                    print("Użytkownicy:")
-                    for u in users:
-                        print(f" - {u[0]} | rola: {u[1]} | atrybuty: {u[2]}")
+                    files = self.system.list_ciphertexts()
+                    print("Zaszyfrowane pliki:")
+                    for f in files:
+                        print(f" - {f[0]} | polityka: {f[1]}")
                 elif choice == "0":
                     self.logged_user = None
                     self.user_key = None
