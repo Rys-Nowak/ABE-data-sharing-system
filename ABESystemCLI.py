@@ -109,9 +109,10 @@ class ABESystemCLI:
             print("1. Dodaj użytkownika")
             print("2. Dodaj plik (zaszyfruj)")
             print("3. Odszyfruj plik")
-            print("4. Lista użytkowników")
-            print("5. Lista zaszyfrowanych plików")
-            print("6. Zaktualizuj atrybuty użytkownika")
+            print("4. Eksportuj swój klucz")
+            print("5. Lista użytkowników")
+            print("6. Lista zaszyfrowanych plików")
+            print("7. Zaktualizuj atrybuty użytkownika")
             print("0. Wyloguj")
             choice = input("> ")
             try:
@@ -130,16 +131,18 @@ class ABESystemCLI:
                     except Exception as e:
                         print(f"[!] Błąd odszyfrowania: {e}")
                 elif choice == "4":
+                    self.export_user_key_interactive()
+                elif choice == "5":
                     users = self.system.list_users()
                     print("Użytkownicy:")
                     for u in users:
                         print(f" - {u[0]} | rola: {u[1]} | atrybuty: {u[2]}")
-                elif choice == "5":
+                elif choice == "6":
                     files = self.system.list_ciphertexts()
                     print("Zaszyfrowane pliki:")
                     for f in files:
                         print(f" - {f[0]} | polityka: {f[1]}")
-                elif choice == "6":
+                elif choice == "7":
                     username = input("Nazwa użytkownika: ").strip()
                     user = self.system.db.get_user(username)
                     if not user:
@@ -187,6 +190,7 @@ class ABESystemCLI:
             print("1. Dodaj plik (zaszyfruj)")
             print("2. Odszyfruj plik")
             print("3. Eksportuj swój klucz")
+            print("4. Lista użytkowników")
             print("0. Wyloguj")
             choice = input("> ")
             try:
@@ -204,6 +208,11 @@ class ABESystemCLI:
                         print(f"[!] Błąd odszyfrowania: {e}")
                 elif choice == "3":
                     self.export_user_key_interactive()
+                elif choice == "4":
+                    users = self.system.list_users()
+                    print("Użytkownicy:")
+                    for u in users:
+                        print(f" - {u[0]} | rola: {u[1]} | atrybuty: {u[2]}")
                 elif choice == "0":
                     self.logged_user = None
                     self.user_key = None
