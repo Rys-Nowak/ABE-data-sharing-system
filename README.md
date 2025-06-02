@@ -5,6 +5,11 @@ docker build -t charm-crypto .
 docker run -it --rm -v $(pwd)/output:/app/output -v $(pwd)/data:/app/data charm-crypto
 ```
 
+### Run tests
+```
+docker run --rm charm-crypto python tests.py
+```
+
 # System udostępniania danych z kontrolą dostępu opartą na kryptografii atrybutowej (ABE)
 
 ## Opis 
