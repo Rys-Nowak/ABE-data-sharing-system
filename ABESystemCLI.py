@@ -111,39 +111,49 @@ class ABESystemCLI:
             print("3. Odszyfruj plik")
             print("4. Lista użytkowników")
             print("5. Lista zaszyfrowanych plików")
+            print("6. Dodaj użytkownikowi atrybuty")
             print("0. Wyloguj")
             choice = input("> ")
-            if choice == "1":
-                self.register_user_interactive()
-            elif choice == "2":
-                self.encrypt_file_interactive()
-            elif choice == "3":
-                label = input("Etykieta pliku do odszyfrowania: ").strip()
-                output = input("Ścieżka do zapisu odszyfrowanego pliku: ").strip()
-                try:
-                    decrypted = self.system.decrypt_by_label(self.user_key, label)
-                    with open(output, "wb") as f:
-                        f.write(decrypted)
-                    print("[✓] Plik odszyfrowany i zapisany.")
-                except Exception as e:
-                    print(f"[!] Błąd odszyfrowania: {e}")
-            elif choice == "4":
-                users = self.system.list_users()
-                print("Użytkownicy:")
-                for u in users:
-                    print(f" - {u[0]} | rola: {u[1]} | atrybuty: {u[2]}")
-            elif choice == "5":
-                files = self.system.list_ciphertexts()
-                print("Zaszyfrowane pliki:")
-                for f in files:
-                    print(f" - {f[0]} | polityka: {f[1]}")
-            elif choice == "0":
-                self.logged_user = None
-                self.user_key = None
-                print("Wylogowano.")
-                break
-            else:
-                print("Nieznana opcja.")
+            try:
+                if choice == "1":
+                    self.register_user_interactive()
+                elif choice == "2":
+                    self.encrypt_file_interactive()
+                elif choice == "3":
+                    label = input("Etykieta pliku do odszyfrowania: ").strip()
+                    output = input("Ścieżka do zapisu odszyfrowanego pliku: ").strip()
+                    try:
+                        decrypted = self.system.decrypt_by_label(self.user_key, label)
+                        with open(output, "wb") as f:
+                            f.write(decrypted)
+                        print("[✓] Plik odszyfrowany i zapisany.")
+                    except Exception as e:
+                        print(f"[!] Błąd odszyfrowania: {e}")
+                elif choice == "4":
+                    users = self.system.list_users()
+                    print("Użytkownicy:")
+                    for u in users:
+                        print(f" - {u[0]} | rola: {u[1]} | atrybuty: {u[2]}")
+                elif choice == "5":
+                    files = self.system.list_ciphertexts()
+                    print("Zaszyfrowane pliki:")
+                    for f in files:
+                        print(f" - {f[0]} | polityka: {f[1]}")
+                elif choice == '6':
+                    username = input("Nazwa użytkownika: ")
+                    attr_str = input("Atrybuty do dodania (oddzielone przecinkiem): ")
+                    new_attrs = [a.strip() for a in attr_str.split(',')]
+                    self.system.add_attributes_to_user(username, new_attrs)
+                    print(f"[✓] Atrybuty {{{new_attrs}}} dodane do użytkownika {username}.")
+                elif choice == "0":
+                    self.logged_user = None
+                    self.user_key = None
+                    print("Wylogowano.")
+                    break
+                else:
+                    print("Nieznana opcja.")
+            except Exception as e:
+                print(f"[!] Wystąpił błąd: {e}")
 
     def user_menu(self):
         while True:
@@ -153,27 +163,30 @@ class ABESystemCLI:
             print("3. Eksportuj swój klucz")
             print("0. Wyloguj")
             choice = input("> ")
-            if choice == "1":
-                self.encrypt_file_interactive()
-            elif choice == "2":
-                label = input("Etykieta pliku do odszyfrowania: ").strip()
-                output = input("Ścieżka do zapisu odszyfrowanego pliku (np. output/data.txt): ").strip()
-                try:
-                    decrypted = self.system.decrypt_by_label(self.user_key, label)
-                    with open(output, "wb") as f:
-                        f.write(decrypted)
-                    print("[✓] Plik odszyfrowany i zapisany.")
-                except Exception as e:
-                    print(f"[!] Błąd odszyfrowania: {e}")
-            elif choice == "3":
-                self.export_user_key_interactive()
-            elif choice == "0":
-                self.logged_user = None
-                self.user_key = None
-                print("Wylogowano.")
-                break
-            else:
-                print("Nieznana opcja.")
+            try:
+                if choice == "1":
+                    self.encrypt_file_interactive()
+                elif choice == "2":
+                    label = input("Etykieta pliku do odszyfrowania: ").strip()
+                    output = input("Ścieżka do zapisu odszyfrowanego pliku (np. output/data.txt): ").strip()
+                    try:
+                        decrypted = self.system.decrypt_by_label(self.user_key, label)
+                        with open(output, "wb") as f:
+                            f.write(decrypted)
+                        print("[✓] Plik odszyfrowany i zapisany.")
+                    except Exception as e:
+                        print(f"[!] Błąd odszyfrowania: {e}")
+                elif choice == "3":
+                    self.export_user_key_interactive()
+                elif choice == "0":
+                    self.logged_user = None
+                    self.user_key = None
+                    print("Wylogowano.")
+                    break
+                else:
+                    print("Nieznana opcja.")
+            except Exception as e:
+                print(f"[!] Wystąpił błąd: {e}")
 
     def run(self):
         while True:
