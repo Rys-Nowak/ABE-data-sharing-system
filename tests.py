@@ -17,7 +17,7 @@ class TestABESystemCLI(unittest.TestCase):
         mock_input.side_effect = [
             "testuser",      
             "user",         
-            "HR,manager",   
+            "HR,MANAGER",   
             "output/test.key" 
         ]
         mock_getpass.side_effect = ["pass123", "pass123"]
@@ -27,7 +27,7 @@ class TestABESystemCLI(unittest.TestCase):
 
         self.cli.register_user_interactive()
 
-        self.cli.system.create_user.assert_called_with("testuser", "pass123", "user", ["HR", "manager"])
+        self.cli.system.create_user.assert_called_with("testuser", "pass123", "user", ["HR", "MANAGER"])
         self.cli.system.export_key_to_file.assert_called_with("user_key_obj", "output/test.key")
         self.assertTrue(any("[✓] Użytkownik zarejestrowany." in str(c) for c in mock_print.call_args_list))
 
@@ -68,11 +68,11 @@ class TestABESystemCLI(unittest.TestCase):
     @patch("builtins.input")
     @patch("builtins.print")
     def test_encrypt_file_interactive(self, mock_print, mock_input):
-        mock_input.side_effect = ["input.txt", "label1", "HR or manager"]
+        mock_input.side_effect = ["input.txt", "label1", "HR or MANAGER"]
         self.cli.system.encrypt_file.return_value = None
 
         self.cli.encrypt_file_interactive()
-        self.cli.system.encrypt_file.assert_called_with("input.txt", "label1", "HR or manager")
+        self.cli.system.encrypt_file.assert_called_with("input.txt", "label1", "HR or MANAGER")
         self.assertTrue(any("Plik 'input.txt' zaszyfrowany" in str(c) for c in mock_print.call_args_list))
 
     @patch("builtins.input")
