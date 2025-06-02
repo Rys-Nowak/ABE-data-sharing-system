@@ -30,7 +30,7 @@ class ABESystemCLI:
             print("[!] Nieprawidłowa rola.")
             return
 
-        attr_str = input("Atrybuty (np. HR,manager): ")
+        attr_str = input("Atrybuty (np. HR,MANAGER): ")
         attributes = [a.strip().upper() for a in attr_str.split(",") if a.strip()]
         user_key = self.system.create_user(name, password, role, attributes)
         print("[✓] Użytkownik zarejestrowany.")
@@ -111,7 +111,7 @@ class ABESystemCLI:
         print("=== Dodawanie pliku ===")
         path = input("Ścieżka do pliku: ").strip()
         label = input("Etykieta: ").strip()
-        policy = input("Polityka dostępu (np. HR or manager): ").strip()
+        policy = input("Polityka dostępu (np. HR or MANAGER): ").strip()
         try:
             self.system.encrypt_file(path, label, policy)
             print(f"[✓] Plik '{path}' zaszyfrowany i dodany jako '{label}'.")
