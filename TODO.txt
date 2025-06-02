@@ -1,7 +1,10 @@
- - Trzeba naprawić dodawania pliku. Nie działa szyfrowania a dokumentacja niewiele pomaga
+ - W menu usera powinna być opcja Lista użytkowników (jak u admina)
+ - W menu admina powinna być opcja Eksportuj swój klucz (jak u usera)
+ - Klucze publiczny i master nie są zapiswyane, więc przy ponownym uruchomieniu aplikacji nie będzie się dało odszyfrować starych plików. Można zapisać klucz publiczny w bazie danych, a master zwrócić adminowi tak jak prywatne klucze
+ - Prywatny klucz użytkownika jest generowany przy zakładaniu konta. Potem użytkownik musi go podać przy logowaniu. Chodzi o to żeby go nie zapisywać w bazie tak po prostu. Można to pewnie zrobić tak, że klucze prywatne są zapiswyane w bazie ale szyfrowane kluczem symetrycznym wygenerowanym na podstawie hasła
+
  - lepsza walidacja inputu (szczególnie username i hasło)
- - można dodać do bazy danych tabelę attributes (na razie jest w users)
  - readme
- - dodawanie atrybutów istniejącemu użytkownikowi
+ - można dodać do bazy danych tabelę attributes (na razie jest w users)
+ - dodawanie atrybutów przez admina istniejącemu użytkownikowi
  - testy
- - zrobiłem tak że prywatny klucz użytkownika jest generowany przy zakładaniu konta. Potem użytkownik musi go podać przy logowaniu. Chodzi o to żeby go nie zapisywać w bazie tak po prostu. Jak ktoś ma lepszy pomysł to można zmienić
