@@ -6,6 +6,12 @@ from charm.schemes.abenc.abenc_bsw07 import CPabe_BSW07
 from charm.core.engine.util import objectToBytes, bytesToObject
 from DatabaseManager import DatabaseManager
 
+from hashlib import sha256
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+
+from attributes import ALL_ATTRIBUTES
+
 
 class ABESystem:
     def __init__(self):
@@ -21,7 +27,10 @@ class ABESystem:
                 "[INFO] Tworzenie domyślnego konta admina (login: admin, hasło: admin123)"
             )
             pw_hash = bcrypt.hashpw("admin123".encode(), bcrypt.gensalt())
-            self.db.save_user("admin", pw_hash, "admin", [])
+            self.db.save_user("admin", pw_hash, "admin", ALL_ATTRIBUTES)
+            self.export_key_to_file(
+                self.generate_user_key(ALL_ATTRIBUTES), "output/admin.key"
+            )
 
     def export_key_to_file(self, key_obj, filepath):
         serialized = objectToBytes(key_obj, self.group)
@@ -40,10 +49,8 @@ class ABESystem:
     def create_user(self, name, password, role, attributes):
         pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
         self.db.save_user(name, pw_hash, role, attributes)
-        if role != "admin":
-            user_key = self.generate_user_key(attributes)
-            return user_key
-        return None
+        user_key = self.generate_user_key(attributes)
+        return user_key
 
     def generate_user_key(self, attributes):
         return self.cpabe.keygen(self.public_key, self.master_key, attributes)
@@ -65,28 +72,47 @@ class ABESystem:
         with open(filepath, "rb") as f:
             file_bytes = f.read()
 
-        file_hashed = self.group.hash(file_bytes, GT) # to się sypie
-        ciphertext = self.cpabe.encrypt(self.public_key, file_hashed, policy)
-        self.db.save_ciphertext(label, policy, objectToBytes(ciphertext, self.group))
+        session_key = self.group.random(GT)
 
-    def decrypt_by_user(self, user, key_obj, label):
+        abe_ciphertext = self.cpabe.encrypt(self.public_key, session_key, policy)
+        session_key_bytes = self.group.serialize(session_key)
+        aes_key = sha256(session_key_bytes).digest()
+
+        cipher = AES.new(aes_key, AES.MODE_CBC)
+        ct_bytes = cipher.encrypt(pad(file_bytes, AES.block_size))
+        iv = cipher.iv
+
+        data_to_store = {
+            "abe": objectToBytes(abe_ciphertext, self.group),
+            "aes": ct_bytes,
+            "iv": iv
+        }
+
+        self.db.save_ciphertext(label, policy, pickle.dumps(data_to_store))
+
+    def decrypt_by_label(self, key_obj, label):
         policy, ciphertext_bytes = self.db.get_ciphertext(label)
-        ciphertext = (
-            bytesToObject(ciphertext_bytes, self.group) if ciphertext_bytes else None
-        )
-        if not ciphertext:
+        if not ciphertext_bytes:
             raise ValueError(f"Nie znaleziono danych o etykiecie: {label}")
-        if user["role"] == "admin":
-            decrypted_bytes = self.cpabe.decrypt(
-                self.public_key, self.master_key, ciphertext
-            )
-            return decrypted_bytes
+        
+        data = pickle.loads(ciphertext_bytes)
+        abe_bytes = data["abe"]
+        aes_ct = data["aes"]
+        iv = data["iv"]
 
+        abe_ciphertext = bytesToObject(abe_bytes, self.group)
         if not key_obj:
             raise ValueError("Klucz użytkownika nie został zaimportowany.")
 
-        decrypted_bytes = self.cpabe.decrypt(self.public_key, key_obj, ciphertext)
-        return decrypted_bytes
+        session_key = self.cpabe.decrypt(self.public_key, key_obj, abe_ciphertext) 
+        if session_key is None:
+            raise ValueError("Brak dostępu: nie można odszyfrować klucza sesji.")
+
+        session_key_bytes = self.group.serialize(session_key)
+        aes_key = sha256(session_key_bytes).digest()
+        cipher = AES.new(aes_key, AES.MODE_CBC, iv)
+        file_bytes = unpad(cipher.decrypt(aes_ct), AES.block_size)
+        return file_bytes
 
     def list_users(self):
         return self.db.list_users()

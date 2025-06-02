@@ -25,23 +25,20 @@ class ABESystemCLI:
             print("[!] Hasła nie pasują.")
             return
 
-        role = input("Rola (admin/uzytkownik): ").strip().lower()
-        if role not in ["admin", "uzytkownik"]:
+        role = input("Rola (admin/user): ").strip().lower()
+        if role not in ["admin", "user"]:
             print("[!] Nieprawidłowa rola.")
             return
 
-        attributes = []
-        if role != "admin":
-            attr_str = input("Atrybuty (np. HR,manager): ")
-            attributes = [a.strip() for a in attr_str.split(",") if a.strip()]
-
+        attr_str = input("Atrybuty (np. HR,manager): ")
+        attributes = [a.strip() for a in attr_str.split(",") if a.strip()]
         user_key = self.system.create_user(name, password, role, attributes)
         print("[✓] Użytkownik zarejestrowany.")
         if user_key:
             print("[INFO] Wygenerowano klucz atrybutowy dla nowego użytkownika.")
             while True:
                 save_path = input(
-                    "Podaj ścieżkę do zapisu klucza użytkownika (np. user.key): "
+                    "Podaj ścieżkę do zapisu klucza użytkownika (np. output/user.key): "
                 ).strip()
                 if save_path:
                     try:
@@ -62,20 +59,19 @@ class ABESystemCLI:
         user = self.system.authenticate_user(name, password)
         if user:
             key_obj = None
-            if user["role"] != "admin":
-                while True:
-                    key_path = input(
-                        "Podaj ścieżkę do pliku z kluczem użytkownika (lub 'anuluj' by przerwać): "
-                    ).strip()
-                    if key_path.lower() == "anuluj":
-                        print("[!] Logowanie przerwane (brak klucza).")
-                        return None
-                    try:
-                        key_obj = self.system.import_key_from_file(key_path)
-                        print("[✓] Klucz zaimportowany.")
-                        break
-                    except Exception as e:
-                        print(f"[!] Błąd importu klucza: {e}")
+            while True:
+                key_path = input(
+                    "Podaj ścieżkę do pliku z kluczem użytkownika (lub 'anuluj' by przerwać): "
+                ).strip()
+                if key_path.lower() == "anuluj":
+                    print("[!] Logowanie przerwane (brak klucza).")
+                    return None
+                try:
+                    key_obj = self.system.import_key_from_file(key_path)
+                    print("[✓] Klucz zaimportowany.")
+                    break
+                except Exception as e:
+                    print(f"[!] Błąd importu klucza: {e}")
 
             self.logged_user = user
             self.user_key = key_obj
@@ -89,7 +85,7 @@ class ABESystemCLI:
         print("=== Dodawanie pliku ===")
         path = input("Ścieżka do pliku: ").strip()
         label = input("Etykieta: ").strip()
-        policy = input("Polityka (np. HR and manager): ").strip()
+        policy = input("Polityka dostępu (np. HR or manager): ").strip()
         try:
             self.system.encrypt_file(path, label, policy)
             print(f"[✓] Plik '{path}' zaszyfrowany i dodany jako '{label}'.")
@@ -97,10 +93,6 @@ class ABESystemCLI:
             print(f"[!] Błąd szyfrowania: {e}")
 
     def export_user_key_interactive(self):
-        if self.logged_user["role"] == "admin":
-            print("[!] Admin nie ma klucza użytkownika do eksportu.")
-            return
-
         if not self.user_key:
             print("[!] Brak zaimportowanego klucza.")
             return
@@ -129,9 +121,7 @@ class ABESystemCLI:
                 label = input("Etykieta pliku do odszyfrowania: ").strip()
                 output = input("Ścieżka do zapisu odszyfrowanego pliku: ").strip()
                 try:
-                    decrypted = self.system.decrypt_by_user(
-                        self.logged_user, None, label
-                    )
+                    decrypted = self.system.decrypt_by_label(self.user_key, label)
                     with open(output, "wb") as f:
                         f.write(decrypted)
                     print("[✓] Plik odszyfrowany i zapisany.")
@@ -167,11 +157,9 @@ class ABESystemCLI:
                 self.encrypt_file_interactive()
             elif choice == "2":
                 label = input("Etykieta pliku do odszyfrowania: ").strip()
-                output = input("Ścieżka do zapisu odszyfrowanego pliku: ").strip()
+                output = input("Ścieżka do zapisu odszyfrowanego pliku (np. output/data.txt): ").strip()
                 try:
-                    decrypted = self.system.decrypt_by_user(
-                        self.logged_user, self.user_key, label
-                    )
+                    decrypted = self.system.decrypt_by_label(self.user_key, label)
                     with open(output, "wb") as f:
                         f.write(decrypted)
                     print("[✓] Plik odszyfrowany i zapisany.")
