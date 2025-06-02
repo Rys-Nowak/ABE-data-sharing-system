@@ -1,34 +1,38 @@
 import sqlite3
-
+import os
+from charm.toolbox.pairinggroup import PairingGroup
+from charm.core.engine.util import objectToBytes, bytesToObject
 
 DB_NAME = "data/abe_storage.db"
 
 
 class DatabaseManager:
     def __init__(self):
+        self.group = PairingGroup('SS512')
         self.conn = sqlite3.connect(DB_NAME)
         self.create_tables()
+        os.makedirs("private_keys", exist_ok=True)
 
     def create_tables(self):
         cursor = self.conn.cursor()
         cursor.execute(
             """
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE,
-            password_hash BLOB,
-            role TEXT,
-            attributes TEXT
-        )"""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE,
+                password_hash BLOB,
+                role TEXT,
+                attributes TEXT
+            )"""
         )
         cursor.execute(
             """
-        CREATE TABLE IF NOT EXISTS ciphertexts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            label TEXT UNIQUE,
-            policy TEXT,
-            blob BLOB
-        )"""
+            CREATE TABLE IF NOT EXISTS ciphertexts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                label TEXT UNIQUE,
+                policy TEXT,
+                blob BLOB
+            )"""
         )
         self.conn.commit()
 
@@ -53,6 +57,24 @@ class DatabaseManager:
         cursor.execute("SELECT id FROM users WHERE name=?", (name,))
         return cursor.fetchone() is not None
 
+    def update_user_attributes(self, username, attributes):
+        attr_str = ','.join(attributes)
+        cursor = self.conn.cursor()
+        cursor.execute('UPDATE users SET attributes = ? WHERE name = ?', (attr_str, username))
+        self.conn.commit()
+
+    def save_user_private_key(self, username, private_key):
+        filepath = os.path.join("private_keys", f"{username}_priv.key")
+        with open(filepath, 'wb') as f:
+            f.write(objectToBytes(private_key, self.group))
+
+    def load_user_private_key(self, username):
+        filepath = os.path.join("private_keys", f"{username}_priv.key")
+        if not os.path.exists(filepath):
+            return None
+        with open(filepath, 'rb') as f:
+            return bytesToObject(f.read(), self.group)
+
     def list_users(self):
         cursor = self.conn.cursor()
         cursor.execute("SELECT name, role, attributes FROM users")
@@ -74,7 +96,6 @@ class DatabaseManager:
             policy = row[0]
             ct = row[1]
             return policy, ct
-
         return None, None
 
     def list_ciphertexts(self):

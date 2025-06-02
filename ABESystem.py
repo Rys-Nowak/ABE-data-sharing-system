@@ -114,6 +114,19 @@ class ABESystem:
         file_bytes = unpad(cipher.decrypt(aes_ct), AES.block_size)
         return file_bytes
 
+    def update_user_attributes(self, username, updated_attrs: list):
+        """
+        Aktualizuje atrybuty użytkownika, generuje nowy klucz i zapisuje go.
+        """
+        user = self.db.get_user(username)
+        if not user:
+            raise ValueError(f"Użytkownik '{username}' nie istnieje.")
+
+        private_key = self.cpabe.keygen(self.public_key, self.master_key, updated_attrs)
+        
+        self.db.update_user_attributes(username, updated_attrs)
+        self.db.save_user_private_key(username, private_key)
+
     def list_users(self):
         return self.db.list_users()
 
