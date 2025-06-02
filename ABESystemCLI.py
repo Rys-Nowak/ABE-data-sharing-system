@@ -111,7 +111,7 @@ class ABESystemCLI:
             print("3. Odszyfruj plik")
             print("4. Lista użytkowników")
             print("5. Lista zaszyfrowanych plików")
-            print("6. Dodaj użytkownikowi atrybuty")
+            print("6. Zaktualizuj atrybuty użytkownika")
             print("0. Wyloguj")
             choice = input("> ")
             try:
@@ -139,12 +139,37 @@ class ABESystemCLI:
                     print("Zaszyfrowane pliki:")
                     for f in files:
                         print(f" - {f[0]} | polityka: {f[1]}")
-                elif choice == '6':
-                    username = input("Nazwa użytkownika: ")
-                    attr_str = input("Atrybuty do dodania (oddzielone przecinkiem): ")
-                    new_attrs = [a.strip() for a in attr_str.split(',')]
-                    self.system.add_attributes_to_user(username, new_attrs)
-                    print(f"[✓] Atrybuty {{{new_attrs}}} dodane do użytkownika {username}.")
+                elif choice == "6":
+                    username = input("Nazwa użytkownika: ").strip()
+                    user = self.system.db.get_user(username)
+                    if not user:
+                        print("[!] Taki użytkownik nie istnieje.")
+                        continue
+
+                    current_attrs = user[2].split(",") if user[2] else []
+                    print(f"Aktualne atrybuty: {current_attrs}")
+                    print("Wybierz akcję:")
+                    print("1. Dodaj")
+                    print("2. Usuń")
+                    print("3. Cofnij")
+                    action_choice = input("> ").strip()
+
+                    if action_choice == "1":
+                        attr_str = input("Atrybuty do dodania (oddzielone przecinkiem): ")
+                        new_attrs = [a.strip() for a in attr_str.split(',') if a.strip()]
+                        updated_attrs = list(set(current_attrs + new_attrs))
+                        self.system.update_user_attributes(username, updated_attrs)
+                        print(f"[✓] Atrybuty dodane. Nowe atrybuty: {updated_attrs}")
+                    elif action_choice == "2":
+                        attr_str = input("Atrybuty do usunięcia (oddzielone przecinkiem): ")
+                        remove_attrs = [a.strip() for a in attr_str.split(',') if a.strip()]
+                        updated_attrs = [a for a in current_attrs if a not in remove_attrs]
+                        self.system.update_user_attributes(username, updated_attrs)
+                        print(f"[✓] Atrybuty usunięte. Nowe atrybuty: {updated_attrs}")
+                    elif action_choice == "3":
+                        print("Anulowano zmianę atrybutów.")
+                    else:
+                        print("[!] Nieznana akcja. Wybierz 1, 2 lub 3.")
                 elif choice == "0":
                     self.logged_user = None
                     self.user_key = None
@@ -154,6 +179,7 @@ class ABESystemCLI:
                     print("Nieznana opcja.")
             except Exception as e:
                 print(f"[!] Wystąpił błąd: {e}")
+
 
     def user_menu(self):
         while True:
