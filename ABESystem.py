@@ -6,6 +6,10 @@ from charm.schemes.abenc.abenc_bsw07 import CPabe_BSW07
 from charm.core.engine.util import objectToBytes, bytesToObject
 from DatabaseManager import DatabaseManager
 
+from hashlib import sha256
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+
 
 class ABESystem:
     def __init__(self):
@@ -65,28 +69,73 @@ class ABESystem:
         with open(filepath, "rb") as f:
             file_bytes = f.read()
 
-        file_hashed = self.group.hash(file_bytes, GT) # to się sypie
-        ciphertext = self.cpabe.encrypt(self.public_key, file_hashed, policy)
-        self.db.save_ciphertext(label, policy, objectToBytes(ciphertext, self.group))
+        # file_hashed = self.group.hash(file_bytes, G1) # to się sypie
+        # ciphertext = self.cpabe.encrypt(self.public_key, file_hashed, policy)
+        # self.db.save_ciphertext(label, policy, objectToBytes(ciphertext, self.group))
+        session_key = self.group.random(GT)
+
+        abe_ciphertext = self.cpabe.encrypt(self.public_key, session_key, policy)
+        session_key_bytes = self.group.serialize(session_key)
+        aes_key = sha256(session_key_bytes).digest()
+
+        cipher = AES.new(aes_key, AES.MODE_CBC)
+        ct_bytes = cipher.encrypt(pad(file_bytes, AES.block_size))
+        iv = cipher.iv
+
+        data_to_store = {
+            "abe": objectToBytes(abe_ciphertext, self.group),
+            "aes": ct_bytes,
+            "iv": iv
+        }
+
+        self.db.save_ciphertext(label, policy, pickle.dumps(data_to_store))
 
     def decrypt_by_user(self, user, key_obj, label):
         policy, ciphertext_bytes = self.db.get_ciphertext(label)
-        ciphertext = (
-            bytesToObject(ciphertext_bytes, self.group) if ciphertext_bytes else None
-        )
-        if not ciphertext:
+        if not ciphertext_bytes:
             raise ValueError(f"Nie znaleziono danych o etykiecie: {label}")
+        
+        data = pickle.loads(ciphertext_bytes)
+        abe_bytes = data["abe"]
+        aes_ct = data["aes"]
+        iv = data["iv"]
+
+        abe_ciphertext = bytesToObject(abe_bytes, self.group)
         if user["role"] == "admin":
-            decrypted_bytes = self.cpabe.decrypt(
-                self.public_key, self.master_key, ciphertext
-            )
-            return decrypted_bytes
+            session_key = self.cpabe.decrypt(self.public_key, self.master_key, abe_ciphertext)
+        else:
+            if not key_obj:
+                raise ValueError("Klucz użytkownika nie został zaimportowany.")
+            #TODO: This returns false, ValueError is caught later
+            # that's why the whole decryption fails, i'm not sure why
+            session_key = self.cpabe.decrypt(self.public_key, key_obj, abe_ciphertext) 
+        if session_key is None:
+            raise ValueError("Brak dostępu: nie można odszyfrować klucza sesji.")
 
-        if not key_obj:
-            raise ValueError("Klucz użytkownika nie został zaimportowany.")
+        # 4. Derive AES key from session key
+        session_key_bytes = self.group.serialize(session_key)
+        aes_key = sha256(session_key_bytes).digest()
 
-        decrypted_bytes = self.cpabe.decrypt(self.public_key, key_obj, ciphertext)
-        return decrypted_bytes
+        # 5. Decrypt the file bytes using AES
+        cipher = AES.new(aes_key, AES.MODE_CBC, iv)
+        file_bytes = unpad(cipher.decrypt(aes_ct), AES.block_size)
+        return file_bytes
+        # ciphertext = (
+        #     bytesToObject(ciphertext_bytes, self.group) if ciphertext_bytes else None
+        # )
+        # if not ciphertext:
+        #     raise ValueError(f"Nie znaleziono danych o etykiecie: {label}")
+        # if user["role"] == "admin":
+        #     decrypted_bytes = self.cpabe.decrypt(
+        #         self.public_key, self.master_key, ciphertext
+        #     )
+        #     return decrypted_bytes
+
+        # if not key_obj:
+        #     raise ValueError("Klucz użytkownika nie został zaimportowany.")
+
+        # decrypted_bytes = self.cpabe.decrypt(self.public_key, key_obj, ciphertext)
+        # return decrypted_bytes
 
     def list_users(self):
         return self.db.list_users()
