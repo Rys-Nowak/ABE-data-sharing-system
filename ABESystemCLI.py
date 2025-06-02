@@ -52,6 +52,32 @@ class ABESystemCLI:
                 else:
                     print("[!] Ścieżka nie może być pusta.")
 
+    def delete_user_interactive(self):
+        if self.logged_user is None or self.logged_user["role"] != "admin":
+            print("[!] Usuwanie użytkownika jest dostępne tylko dla admina.")
+            return
+
+        print("=== Usuwanie użytkownika ===")
+        username = input("Podaj nazwę użytkownika do usunięcia: ").strip()
+        if username == "admin":
+            print("[!] Nie można usunąć konta administratora.")
+            return
+
+        if not self.system.db.user_exists(username):
+            print("[!] Taki użytkownik nie istnieje.")
+            return
+
+        confirm = input(f"Czy na pewno chcesz usunąć użytkownika '{username}'? (tak/nie): ")
+        if confirm.lower() != "tak":
+            print("[INFO] Operacja anulowana.")
+            return
+
+        try:
+            self.system.delete_user(username)
+            print(f"[✓] Użytkownik '{username}' został usunięty.")
+        except Exception as e:
+            print(f"[!] Błąd podczas usuwania: {e}")
+
     def login_interactive(self):
         print("=== Logowanie ===")
         name = input("Nazwa użytkownika: ").strip()
@@ -92,6 +118,21 @@ class ABESystemCLI:
         except Exception as e:
             print(f"[!] Błąd szyfrowania: {e}")
 
+    def delete_file_interactive(self):
+        if self.logged_user is None or self.logged_user["role"] != "admin":
+            print("[!] Usuwanie plików dozwolone tylko dla administratora.")
+            return
+
+        print("=== Usuwanie zaszyfrowanego pliku ===")
+        label = input("Podaj etykietę pliku do usunięcia: ").strip()
+        try:
+            self.system.delete_file(label)
+            print(f"[✓] Plik o etykiecie '{label}' został usunięty.")
+        except ValueError as e:
+            print(f"[!] {e}")
+        except Exception as e:
+            print(f"[!] Wystąpił błąd podczas usuwania: {e}")
+
     def export_user_key_interactive(self):
         if not self.user_key:
             print("[!] Brak zaimportowanego klucza.")
@@ -107,42 +148,27 @@ class ABESystemCLI:
         while True:
             print("\n=== MENU ADMINA ===")
             print("1. Dodaj użytkownika")
-            print("2. Dodaj plik (zaszyfruj)")
-            print("3. Odszyfruj plik")
-            print("4. Eksportuj swój klucz")
-            print("5. Lista użytkowników")
-            print("6. Lista zaszyfrowanych plików")
-            print("7. Zaktualizuj atrybuty użytkownika")
+            print("2. Usuń użytkownika")
+            print("3. Lista użytkowników")
+            print("4. Zaktualizuj atrybuty użytkownika")
+            print("5. Dodaj plik (zaszyfruj)")
+            print("6. Odszyfruj plik")
+            print("7. Usuń plik")
+            print("8. Lista zaszyfrowanych plików")
+            print("9. Eksportuj swój klucz")
             print("0. Wyloguj")
             choice = input("> ")
             try:
                 if choice == "1":
                     self.register_user_interactive()
                 elif choice == "2":
-                    self.encrypt_file_interactive()
+                    self.delete_user_interactive()
                 elif choice == "3":
-                    label = input("Etykieta pliku do odszyfrowania: ").strip()
-                    output = input("Ścieżka do zapisu odszyfrowanego pliku: ").strip()
-                    try:
-                        decrypted = self.system.decrypt_by_label(self.user_key, label)
-                        with open(output, "wb") as f:
-                            f.write(decrypted)
-                        print("[✓] Plik odszyfrowany i zapisany.")
-                    except Exception as e:
-                        print(f"[!] Błąd odszyfrowania: {e}")
-                elif choice == "4":
-                    self.export_user_key_interactive()
-                elif choice == "5":
                     users = self.system.list_users()
                     print("Użytkownicy:")
                     for u in users:
                         print(f" - {u[0]} | rola: {u[1]} | atrybuty: {u[2]}")
-                elif choice == "6":
-                    files = self.system.list_ciphertexts()
-                    print("Zaszyfrowane pliki:")
-                    for f in files:
-                        print(f" - {f[0]} | polityka: {f[1]}")
-                elif choice == "7":
+                elif choice == "4":
                     username = input("Nazwa użytkownika: ").strip()
                     user = self.system.db.get_user(username)
                     if not user:
@@ -173,6 +199,27 @@ class ABESystemCLI:
                         print("Anulowano zmianę atrybutów.")
                     else:
                         print("[!] Nieznana akcja. Wybierz 1, 2 lub 3.")
+                elif choice == "5":
+                    self.encrypt_file_interactive()
+                elif choice == "6":
+                    label = input("Etykieta pliku do odszyfrowania: ").strip()
+                    output = input("Ścieżka do zapisu odszyfrowanego pliku: ").strip()
+                    try:
+                        decrypted = self.system.decrypt_by_label(self.user_key, label)
+                        with open(output, "wb") as f:
+                            f.write(decrypted)
+                        print("[✓] Plik odszyfrowany i zapisany.")
+                    except Exception as e:
+                        print(f"[!] Błąd odszyfrowania: {e}")
+                elif choice == "7":
+                    self.delete_file_interactive()
+                elif choice == "8":
+                    files = self.system.list_ciphertexts()
+                    print("Zaszyfrowane pliki:")
+                    for f in files:
+                        print(f" - {f[0]} | polityka: {f[1]}")
+                elif choice == "9":
+                    self.export_user_key_interactive()
                 elif choice == "0":
                     self.logged_user = None
                     self.user_key = None

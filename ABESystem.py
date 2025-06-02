@@ -52,6 +52,11 @@ class ABESystem:
         user_key = self.generate_user_key(attributes)
         return user_key
 
+    def delete_user(self, username):
+        if not self.db.user_exists(username):
+            raise ValueError(f"Użytkownik '{username}' nie istnieje.")
+        self.db.delete_user(username)
+
     def generate_user_key(self, attributes):
         return self.cpabe.keygen(self.public_key, self.master_key, attributes)
 
@@ -89,6 +94,12 @@ class ABESystem:
         }
 
         self.db.save_ciphertext(label, policy, pickle.dumps(data_to_store))
+
+    def delete_file(self, label):
+        _, ciphertext = self.db.get_ciphertext(label)
+        if not ciphertext:
+            raise ValueError(f"Nie znaleziono zaszyfrowanego pliku o etykiecie '{label}'.")
+        self.db.delete_ciphertext(label)
 
     def decrypt_by_label(self, key_obj, label):
         policy, ciphertext_bytes = self.db.get_ciphertext(label)
