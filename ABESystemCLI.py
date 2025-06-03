@@ -1,10 +1,18 @@
 import getpass
 from ABESystem import ABESystem
+from Validator import UsernameValidator, PasswordValidator
 
 
 class ABESystemCLI:
     def __init__(self):
         self.system = ABESystem()
+        self.username_validator = UsernameValidator()
+        self.password_validator = PasswordValidator(
+            min_length=6,
+            require_uppercase=False,
+            require_special_char=False
+        )
+        self.max_retries = 2
         self.logged_user = None
         self.user_key = None
 
@@ -15,11 +23,33 @@ class ABESystemCLI:
 
         print("=== Rejestracja użytkownika ===")
         name = input("Nazwa użytkownika: ").strip()
+        validation_result = self.username_validator.validate(name)
+        retries = 0
+        while not validation_result.is_valid:
+            if retries == self.max_retries:
+                print("[!] Przekroczono maksymalną liczbę prób.")
+                return
+            print(f"[!] {validation_result.message}")
+            name = input("Nazwa użytkownika: ").strip()
+            validation_result = self.username_validator.validate(name)
+            retries += 1
+            
         if self.system.db.user_exists(name):
             print("[!] Użytkownik już istnieje.")
             return
 
         password = getpass.getpass("Hasło: ")
+        validation_result = self.password_validator.validate(password)
+        retries = 0
+        while not validation_result.is_valid:
+            if retries == self.max_retries:
+                print("[!] Przekroczono maksymalną liczbę prób.")
+                return
+            print(f"[!] {validation_result.message}")
+            password = getpass.getpass("Hasło: ")
+            validation_result = self.password_validator.validate(password)
+            retries += 1
+        
         confirm = getpass.getpass("Potwierdź hasło: ")
         if password != confirm:
             print("[!] Hasła nie pasują.")
