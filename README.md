@@ -216,3 +216,34 @@ Przykład:
 Podaj etykietę pliku do usunięcia: FILE-2
 [✓] Plik o etykiecie 'FILE-2' został usunięty.
 ```
+## Szyfrowanie plików
+* Wygenerowanie losowego elementu z grupy $G_T$
+* Utworzenie skrótu od utworzonego elementu za pomocą `sha256` i wykorzystanie go jako klucz symetryczny
+* Zaszyfrowanie pliku algorytmem AES
+* Zaszyfrowanie klucza symetrycznego algorytmem CP-ABE
+* Zapis obu elementów w bazie danych
+
+## Deszyfrowanie plików
+* Odczyt z bazy dancyh zaszyfrowanego klucza AES i pliku
+* Odszyfrowanie klucza symetrycznego za pomocą klucza publicznego oraz klucza atrybutowego użytkownika
+* Utworzenie skrótu od odtworzonego klucza AES za pomocą `sha256`
+* Odszyfrowanie pliku uzyskanym kluczem symetrycznym
+
+## Baza danych
+Aplikacja wykorzystuje `SQLite`. Schemat bazy danych:
+
+![database-schema](img/db.png)
+
+#### system_keys
+* public_key : klucz publiczny do szyfrowania i odszyfrowania plików
+
+#### users
+* name : unikalna nazwa użytkownika
+* password_hash : skrót hasła wygenerowany przy pomocy algorytmu bcrypt
+* role : rola użytkownika w systemie - `admin` lub `user`
+* attributes : lista atrybutów użytkownika oddzielonych przecinkami
+
+#### ciphertexts
+* label : etykieta pliku
+* policy : polityka dostępu `charm` - atrybuty połączone operatorami `and` i `or`
+* blob: zaszyfrowana zawartość pliku wraz z zaszyfrowanym kluczem symetrycznym do odczytu
